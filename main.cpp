@@ -48,11 +48,7 @@ Mat add_scalar(Mat image, int factor) {
 
             if (newVal > 255) {
                 result.at<uchar>(i, j) = 255;
-            } else {
-                result.at<uchar>(i, j) = newVal;
-            }
-
-            if (newVal < 0) {
+            } else if (newVal < 0) {
                 result.at<uchar>(i, j) = 0;
             } else {
                 result.at<uchar>(i, j) = newVal;
@@ -93,11 +89,7 @@ Mat mul_scalar(Mat image, float factor) {
 
             if (newVal > 255) {
                 result.at<uchar>(i, j) = 255;
-            } else {
-                result.at<uchar>(i, j) = newVal;
-            }
-
-            if (newVal < 0) {
+            } else if (newVal < 0) {
                 result.at<uchar>(i, j) = 0;
             } else {
                 result.at<uchar>(i, j) = newVal;
