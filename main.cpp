@@ -32,9 +32,13 @@ int* compute_histogram(Mat source, int histogram_bins){
 
     int rows = source.rows;
     int cols = source.cols;
-    int* histogram = (int*)(calloc(histogram_bins, sizeof(int)));
+    int* histogram = new int[HISTOGRAM_SIZE];
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
+        histogram[i] = 0;
+    }
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -57,10 +61,14 @@ int* compute_histogram_custom(Mat source, int histogram_bins){
 
     int rows = source.rows;
     int cols = source.cols;
-    int* histogram = (int*)(calloc(histogram_bins, sizeof(int)));
+    int* histogram = new int[HISTOGRAM_SIZE];
     int bins_in_section = HISTOGRAM_SIZE / histogram_bins;
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
+        histogram[i] = 0;
+    }
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -85,9 +93,13 @@ float* compute_pdf(int* histogram, Mat source){
     int cols = source.cols;
     int img_size = rows * cols;
     int no_grayscale_values = HISTOGRAM_SIZE;
-    float* pdf = (float*)(calloc(no_grayscale_values, sizeof(float)));
+    float* pdf = new float[HISTOGRAM_SIZE];
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
+        pdf[i] = 0;
+    }
 
     for (int i = 0; i < no_grayscale_values; i++) {
         pdf[i] = (float)histogram[i] / img_size;
@@ -142,35 +154,33 @@ grayscale_mapping multi_level_thresholding(Mat source, int wh, float th, float* 
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     map.count_grayscale_values = 1;
-    map.grayscale_values = (uchar*)calloc(HISTOGRAM_SIZE, sizeof(uchar));
-    map.grayscale_values[0] = 0;
+    map.grayscale_values = new uchar[HISTOGRAM_SIZE];
 
-    for (int k = wh; k <= 255 - wh; ++k) {
-        float average = 0.0;
+    for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
+        map.grayscale_values[i] = 0;
+    }
 
-        for (int i = k - wh; i <= k + wh; ++i) {
+    for (int k = wh; k <= 255 - wh; k++) {
+        float average = 0;
+        bool is_max = true;
+
+        for (int i = k - wh; i <= k + wh; i++) {
             average += pdf[i];
+
+            if (pdf[k] < pdf[i]) {
+                is_max = false;
+            }
         }
 
         average /= window_width;
 
         if (pdf[k] > average + th) {
-            bool is_max = true;
-
-            for (int i = k - wh; i <= k + wh; ++i) {
-                if (pdf[k] < pdf[i]) {
-                    is_max = false;
-                    break;
-                }
-            }
-
             if (is_max) {
-                map.grayscale_values[map.count_grayscale_values++] = (uchar)k;
+                map.grayscale_values[map.count_grayscale_values++] = k;
             }
         }
     }
 
-    map.grayscale_values[map.count_grayscale_values++] = 0;
     map.grayscale_values[map.count_grayscale_values] = 255;
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
@@ -193,13 +203,12 @@ uchar find_closest_histogram_maximum(uchar old_pixel, grayscale_mapping gray_map
 
     int min_dist = 255;
 
-    for (int i = 0; i < gray_map.count_grayscale_values; ++i) {
+    for (int i = 0; i < gray_map.count_grayscale_values; i++) {
         int distance = abs(gray_map.grayscale_values[i] - old_pixel);
 
         if (distance < min_dist) {
             min_dist = distance;
             new_grayscale_value = gray_map.grayscale_values[i];
-
         }
     }
 
@@ -223,8 +232,8 @@ Mat draw_multi_thresholding(Mat source, grayscale_mapping grayscale_map){
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
             result.at<uchar>(i, j) = find_closest_histogram_maximum(source.at<uchar>(i, j), grayscale_map);
         }
     }
@@ -243,6 +252,18 @@ uchar update_pixel_floyd_steinberg_dithering(uchar pixel_value, int value){
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    int rez = pixel_value + value;
+
+    if (rez < 0) {
+        return 0;
+    }
+
+    if (rez > 255) {
+        return 255;
+    }
+
+    return rez;
+
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
 
 }
@@ -254,9 +275,41 @@ Mat floyd_steinberg_dithering(Mat source, grayscale_mapping grayscale_map){
      * Hint: Use the update_pixel_floyd_steinberg_dithering when spreading the error
      */
 
-    Mat result;
+    int rows = source.rows;
+    int cols = source.cols;
+    Mat result(rows, cols, CV_8UC1);
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < rows -1; i++) {
+        for (int j = 0; j < cols - 1; j++) {
+            uchar old_pixel = source.at<uchar>(i,j);
+            uchar new_pixel = find_closest_histogram_maximum(old_pixel, grayscale_map);
+            result.at<uchar>(i, j) = new_pixel;
+
+            uchar error = abs(old_pixel - new_pixel);
+
+            if (IsInside(source, i, j + 1)) {
+                uchar pixel_value = source.at<uchar>(i, j + 1);
+                result.at<uchar>(i, j + 1) = update_pixel_floyd_steinberg_dithering(pixel_value, 7 * error / 16);
+            }
+
+            if (IsInside(source, i + 1, j - 1)) {
+                uchar pixel_value = source.at<uchar>(i + 1, j - 1);
+                result.at<uchar>(i + 1, j - 1) = update_pixel_floyd_steinberg_dithering(pixel_value, 3 * error / 16);
+            }
+
+            if (IsInside(source, i + 1, j)) {
+                uchar pixel_value = source.at<uchar>(i + 1, j);
+                result.at<uchar>(i + 1, j) = update_pixel_floyd_steinberg_dithering(pixel_value, 5 * error / 16);
+            }
+
+            if (IsInside(source, i + 1, j + 1)) {
+                uchar pixel_value = source.at<uchar>(i + 1, j + 1);
+                result.at<uchar>(i + 1, j + 1) = update_pixel_floyd_steinberg_dithering(pixel_value, error / 16);
+            }
+        }
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
 
@@ -279,13 +332,13 @@ int main() {
     float* pdf_saturn = compute_pdf(histogram_saturn, saturn);
 
     printf("Some histogram values are: ");
-    for(int i=50; i < 56; i++){
+    for(int i = 50; i < 56; i++){
         printf("%d ", histogram_cameraman[i]);
     }
     printf("\n");
 
     printf("Some pdf values are: ");
-    for(int i=50; i < 56; i++){
+    for(int i = 50; i < 56; i++){
         printf("%f ", pdf_cameraman[i]);
     }
 
@@ -294,20 +347,27 @@ int main() {
     int* histogram_custom = compute_histogram_custom(cameraman, 40);
     showHistogram("Histogram reduced bins", histogram_custom, 40, 100);
 
+    delete [] histogram_cameraman;
+    delete [] histogram_saturn;
+    delete [] histogram_custom;
+
     grayscale_mapping grayscale_map_saturn = multi_level_thresholding(saturn, 5, 0.0003, pdf_saturn);
-    grayscale_mapping grayscale_map_cameraman = multi_level_thresholding(saturn, 5, 0.0003, pdf_cameraman);
+    grayscale_mapping grayscale_map_cameraman = multi_level_thresholding(cameraman, 5, 0.0003, pdf_cameraman);
+
+    delete [] pdf_cameraman;
+    delete [] pdf_saturn;
 
     Mat image_multi_threshold_cameraman = draw_multi_thresholding(cameraman, grayscale_map_cameraman);
     imshow("Multi level threshold cameraman", image_multi_threshold_cameraman);
 
-//    Mat fsd_cameraman = floyd_steinberg_dithering(cameraman, grayscale_map_cameraman);
-//    imshow("Floyd Steinberg Dithering cameraman", fsd_cameraman);
+    Mat fsd_cameraman = floyd_steinberg_dithering(cameraman, grayscale_map_cameraman);
+    imshow("Floyd Steinberg Dithering cameraman", fsd_cameraman);
 
     Mat image_multi_threshold_saturn = draw_multi_thresholding(saturn, grayscale_map_saturn);
     imshow("Multi level threshold saturn", image_multi_threshold_saturn);
 
-//    Mat fsd_saturn = floyd_steinberg_dithering(saturn, grayscale_map_saturn);
-//    imshow("Floyd Steinberg Dithering saturn", fsd_saturn);
+    Mat fsd_saturn = floyd_steinberg_dithering(saturn, grayscale_map_saturn);
+    imshow("Floyd Steinberg Dithering saturn", fsd_saturn);
 
     waitKey(0);
     return 0;
