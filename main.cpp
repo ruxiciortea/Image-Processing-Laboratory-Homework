@@ -73,6 +73,23 @@ perimeter naive_perimeter(Mat binary_object){
 
     perimeter object_perimeter;
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    object_perimeter.contour = Mat(rows, cols, CV_8UC1, Scalar(255));
+    object_perimeter.length = 0;
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (binary_object.at<uchar>(i, j) == 0) {
+                for (int k = 0; k < 8; k++) {
+                    for (int l = 0; l < 8; l++) {
+                        if (binary_object.at<uchar>(i + x_coord_neighborhood[k], j + y_coord_neighborhood[l]) == 255) {
+                            object_perimeter.contour.at<uchar>(i, j) = 0;
+                            object_perimeter.length++;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
@@ -266,10 +283,10 @@ void geom_features(int event, int x, int y, int flags, void* param){
         binary_object = get_object_instance(source, color_selected);
         imshow("Binary Object", binary_object);
 
-//        object_perimeter = naive_perimeter(binary_object);
-//        imshow("Contour", object_perimeter.contour);
-//        printf("The perimeter has length %d\n", object_perimeter.length);
-//
+        object_perimeter = naive_perimeter(binary_object);
+        imshow("Contour", object_perimeter.contour);
+        printf("The perimeter has length %d\n", object_perimeter.length);
+
 //        center_of_mass = compute_center_of_mass(binary_object);
 //        center_of_mass_image = display_center_of_mass(center_of_mass, source);
 //        imshow("Center of mass", center_of_mass_image);
