@@ -181,7 +181,7 @@ grayscale_mapping multi_level_thresholding(Mat source, int wh, float th, float* 
         }
     }
 
-    map.grayscale_values[map.count_grayscale_values] = 255;
+    map.grayscale_values[map.count_grayscale_values++] = 255;
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
 
