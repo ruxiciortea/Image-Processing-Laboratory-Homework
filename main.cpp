@@ -79,11 +79,16 @@ perimeter naive_perimeter(Mat binary_object){
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             if (binary_object.at<uchar>(i, j) == 0) {
+                bool found = false;
+
                 for (int k = 0; k < 8; k++) {
                     for (int l = 0; l < 8; l++) {
-                        if (binary_object.at<uchar>(i + x_coord_neighborhood[k], j + y_coord_neighborhood[l]) == 255) {
+                        if (binary_object.at<uchar>(i + x_coord_neighborhood[k], j + y_coord_neighborhood[l]) == 255
+                                && !found) {
                             object_perimeter.contour.at<uchar>(i, j) = 0;
                             object_perimeter.length++;
+
+                            found = true;
                         }
                     }
                 }
@@ -184,9 +189,30 @@ circumscribed_rectangle_coord compute_circumscribed_rectangle_coord(Mat binary_o
     int cols = binary_object.cols;
 
     circumscribed_rectangle_coord coords;
-    int c_min, c_max, r_min, r_max;
+    int c_min = cols, c_max = 0, r_min = rows, r_max = 0;
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (binary_object.at<uchar>(i, j) == 0) {
+                if (j < c_min) {
+                    c_min = j;
+                }
+
+                if (j < c_max) {
+                    c_max = j;
+                }
+
+                if (i < r_min) {
+                    r_min = i;
+                }
+
+                if (i < r_max) {
+                    r_max = i;
+                }
+            }
+        }
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
@@ -202,6 +228,8 @@ float compute_aspect_ratio(circumscribed_rectangle_coord coord){
     float R;
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    R = coord.c_max - coord.c_min + 1 / coord.r_max - coord.r_min + 1;
+
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
     return R;
@@ -212,6 +240,11 @@ float compute_thinness_ratio(int area, int perimeter){
      * This method will compute the thinness ratio and will return it
      */
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    float perimeterSquared = perimeter * perimeter;
+    float fraction = area / perimeterSquared;
+    float T = 4 * 3.14 * (fraction);
+
+    return T;
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
@@ -313,6 +346,9 @@ void geom_features(int event, int x, int y, int flags, void* param){
         imshow("Contour", object_perimeter.contour);
         printf("The perimeter has length %d\n", object_perimeter.length);
 
+        area = compute_area(binary_object);
+        printf("The area is %d\n", area);
+
         center_of_mass = compute_center_of_mass(binary_object);
         center_of_mass_image = display_center_of_mass(center_of_mass, source);
         imshow("Center of mass", center_of_mass_image);
@@ -321,12 +357,16 @@ void geom_features(int event, int x, int y, int flags, void* param){
 //        thinness_ratio = compute_aspect_ratio(circumscribed_coord);
 //        printf("The aspect ratio is %.2f\n", thinness_ratio);
 
-        area = compute_area(binary_object);
-        printf("The area is %d\n", area);
-
 //        aspect_ratio = compute_thinness_ratio(area, object_perimeter.length);
 //        printf("The thinness ratio is %.2f \n", aspect_ratio);
-//
+
+        aspect_ratio = compute_aspect_ratio(circumscribed_coord);
+        printf("The aspect ratio is %.2f \n", aspect_ratio);
+
+        circumscribed_coord = compute_circumscribed_rectangle_coord(binary_object);
+        thinness_ratio = compute_thinness_ratio(area, object_perimeter.length);
+        printf("The thinness ratio is %.2f\n", thinness_ratio);
+
 //        phi = compute_axis_of_elongation_angle(center_of_mass, binary_object);
 //        printf("The angle phi is %.2f", phi);
 //        axis_points = compute_elongation_axis_points(phi, center_of_mass, circumscribed_coord);
