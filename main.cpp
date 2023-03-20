@@ -301,8 +301,26 @@ Mat horizontal_projection(Mat binary_image, circumscribed_rectangle_coord coord)
     /*
      * This method will compute the matrix representing the horizontal projection and return it
      */
-    Mat horizontal_projection;
+    int rows = binary_image.rows;
+    int cols = binary_image.cols;
+
+    Mat horizontal_projection(rows, cols, CV_8UC1, Scalar(255));
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+
+    for (int i = 0; i < cols; i++) {
+        int sum = 0;
+
+        for (int j = 0; j < rows; j++) {
+            if (binary_image.at<uchar>(j, i) == 0) {
+                sum++;
+            }
+        }
+
+        for (int j = 0; j < sum; j++) {
+            horizontal_projection.at<uchar>(j, i) = 0;
+        }
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
@@ -313,9 +331,26 @@ Mat vertical_projection(Mat binary_image, circumscribed_rectangle_coord coord){
     /*
      * This method will compute the matrix representing the vertical projection and return it
      */
-    Mat vertical_projection;
+    int rows = binary_image.rows;
+    int cols = binary_image.cols;
+
+    Mat vertical_projection(rows, cols, CV_8UC1, Scalar(255));
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+
+    for (int i = 0; i < rows; i++) {
+        int sum = 0;
+
+        for (int j = 0; j < cols; j++) {
+            if (binary_image.at<uchar>(i, j) == 0) {
+                sum++;
+            }
+        }
+
+        for (int j = 0; j < sum; j++) {
+            vertical_projection.at<uchar>(i, j) = 0;
+        }
+    }
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
     return vertical_projection;
@@ -329,6 +364,8 @@ void geom_features(int event, int x, int y, int flags, void* param){
     perimeter object_perimeter;
     Point center_of_mass;
     Mat center_of_mass_image;
+    Mat h_projection;
+    Mat v_projection;
     circumscribed_rectangle_coord circumscribed_coord;
     float thinness_ratio;
     float aspect_ratio;
@@ -371,6 +408,12 @@ void geom_features(int event, int x, int y, int flags, void* param){
 //        printf("The angle phi is %.2f", phi);
 //        axis_points = compute_elongation_axis_points(phi, center_of_mass, circumscribed_coord);
 //        draw_elongation_axis(source, axis_points);
+
+        h_projection = horizontal_projection(binary_object, circumscribed_coord);
+        imshow("Horizontal projection", h_projection);
+
+        v_projection = vertical_projection(binary_object, circumscribed_coord);
+        imshow("Vertical projection", v_projection);
     }
 }
 
