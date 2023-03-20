@@ -105,9 +105,17 @@ int compute_area(Mat binary_object){
     int rows = binary_object.rows;
     int cols = binary_object.cols;
 
-    int area;
+    int area = 0;
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (binary_object.at<uchar>(i, j) == 0) {
+                area++;
+            }
+        }
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
@@ -123,7 +131,23 @@ Point compute_center_of_mass(Mat binary_object){
     int cols = binary_object.cols;
 
     Point center_mass;
+    int rSum = 0;
+    int cSum = 0;
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (binary_object.at<uchar>(i, j) == 0) {
+                rSum += i;
+                cSum += j;
+            }
+        }
+    }
+
+    int area = compute_area(binary_object);
+
+    center_mass.x = cSum / area;
+    center_mass.y = rSum / area;
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
@@ -137,8 +161,10 @@ Mat display_center_of_mass(Point center_of_mass, Mat source){
      * This method will display on the source image the center_of_mass
      * Hint: Use the circle method from OpenCv, clone the source
      */
-    Mat result;
+    Mat result = source.clone();
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    circle(result, center_of_mass, 3, Scalar(255));
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
@@ -287,17 +313,17 @@ void geom_features(int event, int x, int y, int flags, void* param){
         imshow("Contour", object_perimeter.contour);
         printf("The perimeter has length %d\n", object_perimeter.length);
 
-//        center_of_mass = compute_center_of_mass(binary_object);
-//        center_of_mass_image = display_center_of_mass(center_of_mass, source);
-//        imshow("Center of mass", center_of_mass_image);
-//
+        center_of_mass = compute_center_of_mass(binary_object);
+        center_of_mass_image = display_center_of_mass(center_of_mass, source);
+        imshow("Center of mass", center_of_mass_image);
+
 //        circumscribed_coord = compute_circumscribed_rectangle_coord(binary_object);
 //        thinness_ratio = compute_aspect_ratio(circumscribed_coord);
 //        printf("The aspect ratio is %.2f\n", thinness_ratio);
-//
-//        area = compute_area(binary_object);
-//        printf("The area is %d\n", area);
-//
+
+        area = compute_area(binary_object);
+        printf("The area is %d\n", area);
+
 //        aspect_ratio = compute_thinness_ratio(area, object_perimeter.length);
 //        printf("The thinness ratio is %.2f \n", aspect_ratio);
 //
