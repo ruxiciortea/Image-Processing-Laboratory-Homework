@@ -103,9 +103,6 @@ labels BFS_labeling(Mat source){
 }
 
 labels Two_pass_labeling(Mat source){
-    Mat labels;
-    int rows, cols;
-    int newlabel, label;
     /*
      * This method will implement the two pass labeling algorithm
      * Hint:
@@ -113,15 +110,94 @@ labels Two_pass_labeling(Mat source){
      *  You can use queue from C++ with its specific operations (push, pop, empty, front)
      */
 
+
+    int rows = source.rows, cols = source.cols;
+    Mat labels(rows, cols, CV_8UC1, Scalar(0));
+    int newLabel = -1, label = 0;
+
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    vector<vector<int>> edges(1000);
 
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (source.at<uchar>(i, j) == 0 && labels.at<uchar>(i, j) == 0) {
+                vector<int> nbh;
+
+                for (int k = 0; k < 4; k++) {
+                    for (int l = 0; l < 4; l++) {
+                        int x = i + np_di[k];
+                        int y = j + np_dj[l];
+
+                        if (labels.at<uchar>(x, y) > 0) {
+                            nbh.push_back(labels.at<uchar>(x, y));
+                        }
+                    }
+                }
+
+                if (nbh.size() == 0) {
+                    label++;
+                    labels.at<uchar>(i, j) = label;
+                } else {
+                    int x = *min_element(nbh.begin(), nbh.end());
+                    labels.at<uchar>(i, j) = x;
+
+                    for (int k = 0; k < nbh.size(); k++) {
+                        int y = nbh.at(k);
+
+                        if (y != x) {
+                            edges[x].push_back(y);
+                            edges[y].push_back(x);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    vector<int> newLabels(label + 1);
+
+    for (int i = 0; i < label + 1; i++) {
+        newLabels.at(i) = 0;
+    }
+
+    for (int i = 0; i <= label; i++) {
+        if (newLabels[i] == 0) {
+            newLabel++;
+            newLabels[i] = newLabel;
+
+            queue<int> q;
+            q.push(i);
+
+            while (!q.empty()) {
+                int x = q.front();
+                q.pop();
+
+                for (int j = 0; j < edges[x].size(); j++) {
+                    int y = edges[x].at(j);
+
+                    if (newLabels[y] == 0) {
+                        newLabels[y] = newLabel;
+                        q.push(y);
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            int x = labels.at<uchar>(i, j);
+            labels.at<uchar>(i, j) = newLabels[x];
+        }
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
 
 
-    return {labels, newlabel};
+    return {labels, newLabel};
 }
+
 int main() {
     Mat source = imread("/Users/ruxiciortea/Desktop/IP/Labs/Lab 5/PI-L5/letters.bmp",
                         IMREAD_GRAYSCALE);
@@ -132,9 +208,9 @@ int main() {
     Mat result_bfs = color_labels(bfsLabels);
     imshow("BFS", result_bfs);
 
-//    labels two_pass_label = Two_pass_labeling(source);
-//    Mat result_two_pass = color_labels(two_pass_label);
-//    imshow("Two pass", result_two_pass);
+    labels two_pass_label = Two_pass_labeling(source);
+    Mat result_two_pass = color_labels(two_pass_label);
+    imshow("Two pass", result_two_pass);
 
     waitKey();
 
