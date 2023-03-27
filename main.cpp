@@ -199,7 +199,7 @@ circumscribed_rectangle_coord compute_circumscribed_rectangle_coord(Mat binary_o
                     c_min = j;
                 }
 
-                if (j < c_max) {
+                if (j > c_max) {
                     c_max = j;
                 }
 
@@ -207,7 +207,7 @@ circumscribed_rectangle_coord compute_circumscribed_rectangle_coord(Mat binary_o
                     r_min = i;
                 }
 
-                if (i < r_max) {
+                if (i > r_max) {
                     r_max = i;
                 }
             }
