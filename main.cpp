@@ -242,7 +242,7 @@ float compute_thinness_ratio(int area, int perimeter){
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     float perimeterSquared = perimeter * perimeter;
     float fraction = area / perimeterSquared;
-    float T = 4 * 3.14 * (fraction);
+    float T = 4 * PI * (fraction);
 
     return T;
 
