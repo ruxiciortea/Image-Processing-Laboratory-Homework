@@ -225,10 +225,10 @@ float compute_aspect_ratio(circumscribed_rectangle_coord coord){
     /*
      * This method will compute the aspect ratio and will return it
      */
-    float R;
+    float R = 0.0;
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    R = coord.c_max - coord.c_min + 1 / coord.r_max - coord.r_min + 1;
+    R = float(coord.c_max - coord.c_min + 1) / float(coord.r_max - coord.r_min + 1);
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) ****
 
@@ -397,12 +397,12 @@ void geom_features(int event, int x, int y, int flags, void* param){
 //        aspect_ratio = compute_thinness_ratio(area, object_perimeter.length);
 //        printf("The thinness ratio is %.2f \n", aspect_ratio);
 
-        aspect_ratio = compute_aspect_ratio(circumscribed_coord);
-        printf("The aspect ratio is %.2f \n", aspect_ratio);
-
         circumscribed_coord = compute_circumscribed_rectangle_coord(binary_object);
         thinness_ratio = compute_thinness_ratio(area, object_perimeter.length);
         printf("The thinness ratio is %.2f\n", thinness_ratio);
+
+        aspect_ratio = compute_aspect_ratio(circumscribed_coord);
+        printf("The aspect ratio is %.2f \n", aspect_ratio);
 
 //        phi = compute_axis_of_elongation_angle(center_of_mass, binary_object);
 //        printf("The angle phi is %.2f", phi);
