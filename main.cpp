@@ -65,13 +65,15 @@ contour extract_contour(Mat source, Point P_0){
         for (int i = 0; i < 8 ; i++) {
             int current_dir = dir + i;
 
-            uchar neighbour = source.at<uchar>(P_current.y + n8_di[current_dir % 8],
-                                               P_current.x + n8_dj[current_dir % 8]);
+            int new_x = P_current.x + n8_dj[current_dir % 8];
+            int new_y = P_current.y + n8_di[current_dir % 8];
+
+            uchar neighbour = source.at<uchar>(new_y, new_x);
 
             if (neighbour == 0) {
-                P_current = Point(P_current.x + n8_dj[current_dir % 8],
-                                  P_current.y + n8_di[current_dir % 8]);
+                P_current = Point(new_x, new_y);
                 border[border_size++] = P_current;
+
                 dir = current_dir % 8;
                 dir_vector[dir_size++] = dir;
 
