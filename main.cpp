@@ -107,9 +107,13 @@ Mat opening(Mat source, neighborhood_structure neighborhood, int no_iter) {
     //TODO: Implement the opening operation for no_iter times using the structuring element defined by
     // the neighborhood argument
 
-    Mat dst;
+    Mat dst = source;
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < no_iter; i++) {
+        dst = dilation(erosion(dst, neighborhood, 1), neighborhood, 1);
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
 
@@ -122,9 +126,13 @@ Mat closing(Mat source, neighborhood_structure neighborhood, int no_iter) {
     //TODO: Implement the closing operation for no_iter times using the structuring element defined by
     // the neighborhood argument
 
-    Mat dst;
+    Mat dst = source;
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < no_iter; i++) {
+        dst = erosion(dilation(dst, neighborhood, 1), neighborhood, 1);
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
 
@@ -195,17 +203,17 @@ int main() {
     Mat erosion_8n = erosion(source, n8, 1);
     imshow("Erosion 8n", erosion_8n);
 
-//    Mat opening_4n = opening(source, n4, 2);
-//    imshow("Opening 4n", opening_4n);
-//
-//    Mat opening_8n = opening(source, n8, 2);
-//    imshow("Opening 8n", opening_8n);
-//
-//    Mat closing_4n = closing(source, n4, 2);
-//    imshow("Closing 4n", closing_4n);
-//
-//    Mat closing_8n = closing(source, n8, 2);
-//    imshow("Closing 8n", closing_8n);
+    Mat opening_4n = opening(source, n4, 2);
+    imshow("Opening 4n", opening_4n);
+
+    Mat opening_8n = opening(source, n8, 2);
+    imshow("Opening 8n", opening_8n);
+
+    Mat closing_4n = closing(source, n4, 2);
+    imshow("Closing 4n", closing_4n);
+
+    Mat closing_8n = closing(source, n8, 2);
+    imshow("Closing 8n", closing_8n);
 
 
 
