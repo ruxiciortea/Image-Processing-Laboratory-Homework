@@ -144,10 +144,20 @@ Mat boundary_extraction(Mat source, neighborhood_structure neighborhood) {
     //TODO: Implement the boundary extraction algorithm for no_iter times using the structuring element defined by
     // the neighborhood argument
 
-    int rows, cols;
-    Mat erosion_mat, dst;
+    int rows = source.rows, cols = source.cols;
+    Mat erosion_mat = erosion(source, neighborhood, 1), dst(rows, cols, CV_8UC1, Scalar(0));
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (source.at<uchar>(i, j) == erosion_mat.at<uchar>(i, j)) {
+                dst.at<uchar>(i, j) = 255;
+            } else {
+                dst.at<uchar>(i, j) = 0;
+            }
+        }
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
 
@@ -217,9 +227,9 @@ int main() {
 
 
 
-//    Mat boundary_extraction_mat = boundary_extraction(source_boundary, n8);
-//    imshow("Boundary extraction", boundary_extraction_mat);
-//
+    Mat boundary_extraction_mat = boundary_extraction(source_boundary, n8);
+    imshow("Boundary extraction", boundary_extraction_mat);
+
 //    Mat region_filling_mat = region_filling(source_boundary, n8);
 //    imshow("Region filling", region_filling_mat);
 
