@@ -20,6 +20,7 @@ Mat dilation(Mat source, neighborhood_structure neighborhood, int no_iter){
 
     //TODO: Implement the dilation operation for no_iter times using the structuring element defined by
     // the neighborhood argument
+
     int rows = source.rows, cols = source.cols;
     Mat dst(rows, cols, CV_8UC1, Scalar(0)), aux = source;
 
@@ -61,10 +62,39 @@ Mat erosion(Mat source, neighborhood_structure neighborhood, int no_iter){
     //TODO: Implement the erosion operation for no_iter times using the structuring element defined by
     // the neighborhood argument
 
-    Mat dst, aux;
-    int rows, cols;
+    int rows = source.rows, cols = source.cols;
+    Mat dst(rows, cols, CV_8UC1, Scalar(0)), aux = source;
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    for (int m = 0; m < no_iter; m++) {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                bool background = false;
+
+                for (int k = 0; k < neighborhood.size; k++) {
+                    for (int l = 0; l < neighborhood.size; l++) {
+                        int new_i = i + neighborhood.di[k];
+                        int new_j = j + neighborhood.dj[l];
+
+                        if (IsInside(aux, new_i, new_j)) {
+                            if (aux.at<uchar>(new_i, new_j) == 255) {
+                                background = true;
+
+                                break;
+                            } else {
+                                background = false;
+                            }
+                        }
+                    }
+                }
+
+                dst.at<uchar>(i, j) = background ? 255 : 0;
+            }
+        }
+
+        aux = dst;
+    }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
 
@@ -159,12 +189,12 @@ int main() {
     Mat dilation_8n = dilation(source, n8, 1);
     imshow("Dilation 8n", dilation_8n);
 
-//    Mat erosion_4n = erosion(source, n4, 1);
-//    imshow("Erosion 4n", erosion_4n);
-//
-//    Mat erosion_8n = erosion(source, n8, 1);
-//    imshow("Erosion 8n", erosion_8n);
-//
+    Mat erosion_4n = erosion(source, n4, 1);
+    imshow("Erosion 4n", erosion_4n);
+
+    Mat erosion_8n = erosion(source, n8, 1);
+    imshow("Erosion 8n", erosion_8n);
+
 //    Mat opening_4n = opening(source, n4, 2);
 //    imshow("Opening 4n", opening_4n);
 //
