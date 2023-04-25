@@ -194,27 +194,13 @@ Mat histogram_slide(Mat source, int offset, int min, int max) {
 
 }
 
-Mat histogram_shrinking_stretching(Mat source, int g_out_min, int g_out_max) {
+Mat histogram_shrinking_stretching(Mat source, int g_out_min, int g_out_max, int* histogram) {
 
     int rows = source.rows, cols = source.cols;
     Mat dst(rows, cols, CV_8UC1, Scalar(0));
 
-    int g_in_min = 256;
-    int g_in_max = -1;
-
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            uchar current_pixel = source.at<uchar>(i, j);
-
-            if (current_pixel < g_in_min) {
-                g_in_min = current_pixel;
-            }
-
-            if (current_pixel > g_in_max) {
-                g_in_max = current_pixel;
-            }
-        }
-    }
+    int g_in_min = histogram_min(histogram);
+    int g_in_max = histogram_max(histogram);
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -235,15 +221,104 @@ Mat histogram_shrinking_stretching(Mat source, int g_out_min, int g_out_max) {
 
 }
 
+Mat histogram_gamma_correction(Mat source, float gamma_coefficient) {
+
+    int rows = source.rows, cols = source.cols;
+    Mat dst(rows, cols, CV_8UC1, Scalar(0));
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            int new_value = 255 * pow((float) source.at<uchar>(i, j) / 255, gamma_coefficient);
+
+            if (new_value < 0) {
+                dst.at<uchar>(i, j) = 0;
+            } else if (new_value > 255) {
+                dst.at<uchar>(i, j) = 255;
+            } else {
+                dst.at<uchar>(i, j) = new_value;
+            }
+        }
+    }
+
+    return dst;
+
+}
+
+float* compute_pdf(int* histogram, Mat source) {
+
+    int rows = source.rows;
+    int cols = source.cols;
+    int img_size = rows * cols;
+    int no_grayscale_values = HISTOGRAM_SIZE;
+    float* pdf = new float[HISTOGRAM_SIZE];
+
+    for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
+        pdf[i] = 0;
+    }
+
+    for (int i = 0; i < no_grayscale_values; i++) {
+        pdf[i] = (float)histogram[i] / img_size;
+    }
+
+    return pdf;
+
+}
+
+float* compute_CPDF(Mat source, int* histogram) {
+
+    float* CPDF = new float[HISTOGRAM_SIZE];
+    int M = source.rows * source.cols;
+
+    for (int i = 0; i < HISTOGRAM_SIZE; i++) {
+        float sum = 0.0f;
+
+        for (int j = 0; j < i; j++) {
+            sum += (float) histogram[j] / M;
+        }
+
+        CPDF[i] = sum;
+    }
+
+    return CPDF;
+}
+
+Mat compute_equalized_image(Mat source, float* CPDF) {
+
+    int rows = source.rows, cols = source.cols;
+    Mat dst(rows, cols, CV_8UC1, Scalar(0));
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            float CPDF_value = CPDF[source.at<uchar>(i, j)];
+            int new_value = 255 * CPDF_value;
+
+            if (new_value < 0) {
+                dst.at<uchar>(i, j) = 0;
+            } else if (new_value > 255) {
+                dst.at<uchar>(i, j) = 255;
+            } else {
+                dst.at<uchar>(i, j) = new_value;
+            }
+        }
+    }
+
+    return dst;
+
+}
+
 int main() {
 
     Mat source = imread("/Users/ruxiciortea/Desktop/IP/Labs/Lab 8/PI-L8/balloons.bmp",IMREAD_GRAYSCALE);
     Mat nature = imread("/Users/ruxiciortea/Desktop/IP/Labs/Lab 8/PI-L8/Hawkes_Bay_NZ.bmp",IMREAD_GRAYSCALE);
     Mat wheel = imread("/Users/ruxiciortea/Desktop/IP/Labs/Lab 8/PI-L8/wheel.bmp",IMREAD_GRAYSCALE);
+    Mat boat = imread("/Users/ruxiciortea/Desktop/IP/Labs/Lab 8/PI-L8/wilderness.bmp",IMREAD_GRAYSCALE);
 
-    imshow("Original Image", source);
+    imshow("Original Ballons", source);
 
     int* histogram_balloon = compute_histogram(source, HISTOGRAM_SIZE);
+    int* histogram_nature = compute_histogram(nature, HISTOGRAM_SIZE);
+    int* histogram_wheel = compute_histogram(wheel, HISTOGRAM_SIZE);
+
     showHistogram("Histogram", histogram_balloon, HISTOGRAM_SIZE, 100);
 
     float mean = compute_mean_intensity(source, histogram_balloon);
@@ -264,13 +339,30 @@ int main() {
 //    imshow("Balloons Brighter", balloons_brighter);
 //    imshow("Balloons Darker", balloons_darker);
 
-    Mat nature_stretching = histogram_shrinking_stretching(nature, 10, 255);
-    Mat wheel_shrinking = histogram_shrinking_stretching(wheel, 50, 150);
+//    Mat nature_stretching = histogram_shrinking_stretching(nature, 10, 255, histogram_nature);
+//    Mat wheel_shrinking = histogram_shrinking_stretching(wheel, 50, 150, histogram_wheel);
 
     imshow("Nature Original", nature);
-    imshow("Nature Stretching", nature_stretching);
-    imshow("Wheel Original", wheel);
-    imshow("Wheel Shrinking", wheel_shrinking);
+//    imshow("Nature Stretching", nature_stretching);
+//    imshow("Wheel Original", wheel);
+//    imshow("Wheel Shrinking", wheel_shrinking);
+
+//    Mat boat_compressed = histogram_gamma_correction(boat, 0.5f);
+//    Mat boat_expanded = histogram_gamma_correction(boat, 1.5f);
+
+//    imshow("Boat Original", boat);
+//    imshow("Boat Compressed", boat_compressed);
+//    imshow("Boat Expanded", boat_expanded);
+
+    float* CPDF_nature = compute_CPDF(nature, histogram_nature);
+    Mat nature_equalized = compute_equalized_image(nature, CPDF_nature);
+    imshow("Nature Equalized", nature_equalized);
+
+    int* histogram_nature_not_equalized = compute_histogram(source, HISTOGRAM_SIZE);
+    int* histogram_nature_equalized = compute_histogram(nature_equalized, HISTOGRAM_SIZE);
+
+    showHistogram("Histogram Nature", histogram_nature_not_equalized, HISTOGRAM_SIZE, 100);
+    showHistogram("Histogram Nature Equalized", histogram_nature_equalized, HISTOGRAM_SIZE, 100);
 
     waitKey();
 
