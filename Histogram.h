@@ -2,7 +2,13 @@
 // Created by Ruxandra Ciortea on 17.05.2023.
 //
 
-#ifndef IP_HISTOGRAM_H
-#define IP_HISTOGRAM_H
+#include <iostream>
+#include <opencv2/opencv.hpp>
 
-#endif //IP_HISTOGRAM_H
+using namespace std;
+using namespace cv;
+
+#define HISTOGRAM_SIZE 256
+
+int* computeHistogram(Mat source);
+void showHistogram(const string& name, int* hist, const int  hist_cols, const int hist_height);

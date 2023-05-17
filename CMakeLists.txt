@@ -47,7 +47,7 @@ include_directories("${CMAKE_CURRENT_LIST_DIR}")
 # CMakeLists.txt file. However, usually you will create only one executable in
 # your cmake projects and use the syntax shown above.
 macro(add_example name)
-    add_executable(${name} ${name}.cpp)
+    add_executable(${name} ${name}.cpp Histogram.cpp Utils.cpp)
     target_link_libraries(${name} ${OpenCV_LIBS} )
 endmacro()
 # if an example requires GUI, call this macro to check DLIB_NO_GUI_SUPPORT to include or exclude

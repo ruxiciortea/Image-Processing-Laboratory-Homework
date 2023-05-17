@@ -1,101 +1,10 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include "Histogram.h"
+#include "Utils.h"
 
 using namespace std;
 using namespace cv;
-
-#define HISTOGRAM_SIZE 256
-
-typedef struct Kernel {
-    float **values;
-    int lengths;
-    float meanValue;
-} Kernel;
-
-float** initMatrix(int rows, int cols) {
-    float **matrix = (float**)calloc(rows, sizeof(float*));
-
-    for (int i = 0; i < rows; i++) {
-        matrix[i] = (float*)calloc(cols, sizeof(float));
-    }
-
-    return matrix;
-}
-
-void printMatrix(int rows, int cols, float **matrix) {
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            cout << matrix[i][j] << " ";
-        }
-
-        cout << "\n";
-    }
-
-    cout << "\n";
-}
-
-int findRegion(double angle) {
-    if ((angle >= 67.5 && angle < 112.5) || (angle >= 247.5 && angle < 292.5)) {
-        return 0;
-    }
-
-    if ((angle >= 22.5 && angle < 67.5) || (angle >= 202.5 && angle < 247.5)) {
-        return 1;
-    }
-
-    if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle < 202.5) || (angle >= 337.5 && angle <= 360)) {
-        return 2;
-    }
-
-    if ((angle >= 112.5 && angle < 157.5) || (angle >= 292.5 && angle < 337.5)) {
-        return 3;
-    }
-
-    return -1;
-}
-
-void findPointsBasedOnRegion(int region, Point &p1, Point &p2) {
-    switch (region) {
-        case 0:
-            p1 = Point(0, -1);
-            p2 = Point(0, 1);
-
-            break;
-        case 1:
-            p1 = Point(1, -1);
-            p2 = Point(-1, 1);
-
-            break;
-        case 2:
-            p1 = Point(1, 0);
-            p2 = Point(-1, 0);
-
-            break;
-        case 3:
-            p1 = Point(-1, -1);
-            p2 = Point(1, 1);
-
-            break;
-    }
-}
-
-Kernel initKernel(vector<int> values, int size) {
-    float **matrix = initMatrix(size, size);
-    int index = 0;
-    float sum = 0;
-
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            matrix[i][j] = values[index];
-            sum += values[index];
-            index++;
-        }
-    }
-
-    float meanValue = sum == 0 ? 1 : sum;
-
-    return {matrix, size, meanValue};
-}
 
 Kernel computeGaussianKernel(int w) {
     int x0 = w / 2, y0 = w / 2;
@@ -167,7 +76,7 @@ Mat computeMagnitudeFloat(Mat source, Kernel kernelX, Kernel kernelY) {
             uchar xGrad = filteredX.at<uchar>(i, j);
             uchar yGrad = filteredY.at<uchar>(i, j);
 
-            destination.at<uchar>(i, j) = abs(sqrt(pow(xGrad, 2) + pow(yGrad, 2)));
+            destination.at<float>(i, j) = abs(sqrt(pow(xGrad, 2) + pow(yGrad, 2)));
         }
     }
 
@@ -180,7 +89,7 @@ Mat normalizeMagnitude(Mat source) {
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            destination.at<uchar>(i, j) = source.at<uchar>(i, j) / (4 * sqrt(2));
+            destination.at<uchar>(i, j) = source.at<float>(i, j) / (4 * sqrt(2));
         }
     }
 
@@ -206,16 +115,16 @@ Mat computeDirection(Mat source, Kernel kernelX, Kernel kernelY) {
                 angle += 135;
             }
 
-            destination.at<uchar>(i, j) = angle;
+            destination.at<float>(i, j) = angle;
         }
     }
 
     return destination;
 }
 
-Mat nonMaximaSuperposition(Mat source, Mat magnitudeMatrix, Mat directionMatrix) {
-    int rows = source.rows, cols = source.cols;
-    Mat destination = Mat(rows, cols, CV_8UC1, Scalar(0));
+Mat nonMaximaSuperposition(Mat magnitudeMatrix, Mat directionMatrix) {
+    int rows = magnitudeMatrix.rows, cols = magnitudeMatrix.cols;
+    Mat destination = Mat(rows, cols, CV_32FC1, Scalar(0));
 
     for (int i = 1; i < rows - 1; i++) {
         for (int j = 1; j < cols - 1; j++) {
@@ -227,33 +136,14 @@ Mat nonMaximaSuperposition(Mat source, Mat magnitudeMatrix, Mat directionMatrix)
 
             if (magnitudeMatrix.at<uchar>(i, j) > magnitudeMatrix.at<uchar>(i + p1.x, j + p1.y)
                     && magnitudeMatrix.at<uchar>(i, j) > magnitudeMatrix.at<uchar>(i + p2.x, j + p2.y)) {
-                destination.at<uchar>(i, j) = source.at<uchar>(i, j);
+                destination.at<float>(i, j) = magnitudeMatrix.at<float>(i, j);
             } else {
-                destination.at<uchar>(i, j) = 0;
+                destination.at<float>(i, j) = 0.0f;
             }
         }
     }
 
     return destination;
-}
-
-int* computeHistogram(Mat source){
-    int rows = source.rows;
-    int cols = source.cols;
-    int* histogram = new int[HISTOGRAM_SIZE];
-
-    for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
-        histogram[i] = 0;
-    }
-
-    for (int i = 2; i < rows - 2; i++) {
-        for (int j = 2; j < cols - 2; j++) {
-            unsigned char pixel = source.at<uchar>(i, j);
-            histogram[pixel]++;
-        }
-    }
-
-    return histogram;
 }
 
 int computeAdaptiveThresholdValue(Mat source, int *magnitudeHistogramScales) {
@@ -276,6 +166,25 @@ int computeAdaptiveThresholdValue(Mat source, int *magnitudeHistogramScales) {
     }
 
     return adaptiveThreshold;
+}
+
+Mat applyThresholding(Mat source, int thresholdValue){
+    int rows = source.rows, cols = source.cols;
+    Mat destination(rows, cols, CV_8UC1);;
+
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            unsigned char pixel = source.at<unsigned char>(i,j);
+
+            if (pixel <= thresholdValue) {
+                destination.at<uchar>(i, j) = 0;
+            } else {
+                destination.at<uchar>(i, j) = pixel;
+            }
+        }
+    }
+
+    return destination;
 }
 
 int main() {
@@ -321,11 +230,17 @@ int main() {
     Mat directionMatrix = computeDirection(gaussianFiltered2D, sobelX, sobelY);
 //    imshow("Direction values", directionMatrix);
 
-    Mat nonMaximaSuperpositioned = nonMaximaSuperposition(sobelYFiltered, normalizedMagnitudeMatrix, directionMatrix);
-    imshow("Non Maxima Superposition", nonMaximaSuperpositioned);
+    Mat nonMaximaSuperpositioned = nonMaximaSuperposition(floatMagnitudeMatrix, directionMatrix);
+    Mat normalizedNonMaximaSuperpositioned;
+    normalize(nonMaximaSuperpositioned, normalizedNonMaximaSuperpositioned, 0, 1, NORM_MINMAX);
+    imshow("test", normalizedNonMaximaSuperpositioned);
 
     int *magnitudeHistogramScales = computeHistogram(normalizedMagnitudeMatrix);
+//    showHistogram("Histogram", magnitudeHistogramScales, HISTOGRAM_SIZE, 100);
     int adaptiveThreshold = computeAdaptiveThresholdValue(nonMaximaSuperpositioned, magnitudeHistogramScales);
+
+    Mat thresholding = applyThresholding(nonMaximaSuperpositioned, adaptiveThreshold);
+    imshow("x", thresholding);
 
     waitKey();
 
