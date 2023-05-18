@@ -86,10 +86,6 @@ Mat computeDirection(Mat source, Kernel kernelX, Kernel kernelY) {
 
             float angle = (float)(atan2(yGrad, xGrad) * (180.0 / pi));
 
-            if (kernelX.lengths == 2 || kernelY.lengths == 2) {
-                angle += 135;
-            }
-
             destination.at<float>(i, j) = angle;
         }
     }
@@ -97,7 +93,7 @@ Mat computeDirection(Mat source, Kernel kernelX, Kernel kernelY) {
     return destination;
 }
 
-Mat computeNonMaximaSuperposition(Mat magnitudeMatrix, Mat directionMatrix) {
+Mat computeNonMaximaSuppression(Mat magnitudeMatrix, Mat directionMatrix) {
     int rows = magnitudeMatrix.rows, cols = magnitudeMatrix.cols;
     Mat destination = Mat(rows, cols, CV_32FC1, Scalar(0));
     int border = 2;
@@ -110,8 +106,11 @@ Mat computeNonMaximaSuperposition(Mat magnitudeMatrix, Mat directionMatrix) {
             Point p1, p2;
             findPointsBasedOnRegion(region, p1, p2);
 
-            if (magnitudeMatrix.at<float>(i, j) > magnitudeMatrix.at<float>(i + p1.x, j + p1.y)
-                    && magnitudeMatrix.at<float>(i, j) > magnitudeMatrix.at<float>(i + p2.x, j + p2.y)) {
+            float m = magnitudeMatrix.at<float>(i, j);
+            float m1 = magnitudeMatrix.at<float>(i + p1.x, j + p1.y);
+            float m2 = magnitudeMatrix.at<float>(i + p2.x, j + p2.y);
+
+            if (m > m1 && m > m2 && m > 0 && m1 > 0 && m2 > 0) {
                 destination.at<float>(i, j) = magnitudeMatrix.at<float>(i, j);
             }
         }
@@ -226,32 +225,17 @@ int main() {
                                IMREAD_GRAYSCALE);
 
     int kernelSize3 = 3;
-    int kernelSize2 = 2;
 
     Kernel gaussianKernel = initKernel({1, 2, 1, 2, 4, 2, 1, 2, 1}, kernelSize3);
-//    Kernel prewittX = initKernel({-1, 0, 1, -1, 0, 1, -1, 0, 1}, kernelSize3);
-//    Kernel prewittY = initKernel({1, 1, 1, 0, 0, 0, -1, -1, -1}, kernelSize3);
     Kernel sobelX = initKernel({-1, 0, 1, -2, 0, 2, -1, 0, 1}, kernelSize3);
     Kernel sobelY = initKernel({1, 2, 1, 0, 0, 0, -1, -2, -1}, kernelSize3);
-//    Kernel crossX = initKernel({1, 0, 0, -1}, kernelSize2);
-//    Kernel crossY = initKernel({0, -1, 1, 0}, kernelSize2);
 
     imshow("Original Image", saturn);
     Mat gaussianFiltered2D = applyConvolution(saturn, gaussianKernel, 1);
     imshow("Gaussian Filtered Image", gaussianFiltered2D);
 
-//    Mat prewittXFiltered = applyConvolution(gaussianFiltered2D, prewittX);
-//    Mat prewittYFiltered = applyConvolution(prewittXFiltered, prewittY);
-//    imshow("Prewitt Filtered Image", prewittYFiltered);
-
     Mat sobelXFiltered = applyConvolution(gaussianFiltered2D, sobelX, 2);
     Mat sobelYFiltered = applyConvolution(gaussianFiltered2D, sobelY, 2);
-//    imshow("X", sobelXFiltered);
-//    imshow("Y", sobelYFiltered);
-
-//    Mat crossXFiltered = applyConvolution(gaussianFiltered2D, crossX);
-//    Mat crossYFiltered = applyConvolution(crossXFiltered, crossY);
-//    imshow("Cross Filtered Image", crossYFiltered);
 
     Mat floatMagnitudeMatrix = computeMagnitudeFloat(gaussianFiltered2D, sobelX, sobelY);
     Mat normalizedMagnitudeMatrix = normalizeMagnitude(floatMagnitudeMatrix);
@@ -259,16 +243,16 @@ int main() {
 
     Mat directionMatrix = computeDirection(gaussianFiltered2D, sobelX, sobelY);
 
-    Mat nonMaximaSuperposition = computeNonMaximaSuperposition(floatMagnitudeMatrix, directionMatrix);
-    Mat normalizedNonMaximaSuperposition;
-    normalize(nonMaximaSuperposition, normalizedNonMaximaSuperposition, 0, 1, NORM_MINMAX);
-    imshow("Normalized Non Maxima Superposition", normalizedNonMaximaSuperposition);
+    Mat nonMaximaSuppression = computeNonMaximaSuppression(floatMagnitudeMatrix, directionMatrix);
+    Mat normalizedNonMaximaSuppression;
+    normalize(nonMaximaSuppression, normalizedNonMaximaSuppression, 0, 1, NORM_MINMAX);
+    imshow("Normalized Non Maxima Superposition", normalizedNonMaximaSuppression);
 
     int *magnitudeHistogramScales = computeHistogram(normalizedMagnitudeMatrix);
 //    showHistogram("Histogram", magnitudeHistogramScales, HISTOGRAM_SIZE, 100);
-    int adaptiveThreshold = computeAdaptiveThresholdValue(nonMaximaSuperposition, magnitudeHistogramScales);
+    int adaptiveThreshold = computeAdaptiveThresholdValue(nonMaximaSuppression, magnitudeHistogramScales);
 
-    Mat thresholding = edgeLabeling(nonMaximaSuperposition, adaptiveThreshold);
+    Mat thresholding = edgeLabeling(nonMaximaSuppression, adaptiveThreshold);
     imshow("After Thresholding", thresholding);
 
     Mat edges = extendStrongEdges(thresholding);

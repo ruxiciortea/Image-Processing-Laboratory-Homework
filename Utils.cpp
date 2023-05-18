@@ -51,21 +51,29 @@ void findPointsBasedOnRegion(int region, Point &p1, Point &p2) {
         case 0:
             p1 = Point(0, -1);
             p2 = Point(0, 1);
+//            p1 = Point(-1, 0);
+//            p2 = Point(1, 0);
 
             break;
         case 1:
             p1 = Point(1, -1);
             p2 = Point(-1, 1);
+//            p1 = Point(-1, 1);
+//            p2 = Point(1, -1);
 
             break;
         case 2:
             p1 = Point(1, 0);
             p2 = Point(-1, 0);
+//            p1 = Point(0, 1);
+//            p2 = Point(0, -1);
 
             break;
         case 3:
             p1 = Point(-1, -1);
             p2 = Point(1, 1);
+//            p1 = Point(1, 1);
+//            p2 = Point(-1, -1);
 
             break;
     }
