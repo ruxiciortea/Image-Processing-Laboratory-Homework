@@ -6,49 +6,22 @@
 using namespace std;
 using namespace cv;
 
-Kernel computeGaussianKernel(int w) {
-    int x0 = w / 2, y0 = w / 2;
-    float sigma = (float)w / 6;
-    float pi = 3.14;
-    float sum = 0.0;
+#define STRONG_VALUE 255
+#define WEAK_VALUE 128
 
-    Kernel kernel;
-    kernel.values = initMatrix(w, w);
-
-    for (int i = 0; i < w; i++) {
-        for (int j = 0; j < w; j++) {
-            float x = (float)(pow(i - x0, 2) + (float)pow(j - y0, 2));
-            float y = 2 * (float)pow(sigma, 2);
-            float expVal = x / y;
-            float a = exp(-expVal);
-            float b = (2 * pi * (float)pow(sigma, 2));
-            float val = a / b;
-
-            sum += val;
-            kernel.values[i][j] = val;
-        }
-    }
-
-    kernel.lengths = w;
-    kernel.meanValue = sum;
-
-    return kernel;
-}
-
-Mat applyConvolution(Mat source, Kernel kernel) {
+Mat applyConvolution(Mat source, Kernel kernel, int border) {
     int rows = source.rows, cols = source.cols;
-    Mat destination = Mat(rows, cols, CV_8UC1, Scalar(0));
-    int border = kernel.lengths / 2;
+    Mat destination = source.clone();
 
     for (int i = border; i < rows - border; i++) {
         for (int j = border; j < cols - border; j++) {
             float sum = 0;
 
             for (int k = 0; k < kernel.lengths; k++) {
-                int newI = i + k - border;
+                int newI = i + k - border - 1;
 
                 for (int l = 0; l < kernel.lengths; l++) {
-                    int newJ = j + l - border;
+                    int newJ = j + l - border - 1;
 
                     float kernelValue = kernel.values[k][l];
                     float sourceValue = (float)source.at<uchar>(newI, newJ);
@@ -57,7 +30,7 @@ Mat applyConvolution(Mat source, Kernel kernel) {
                 }
             }
 
-            destination.at<uchar>(i, j) = (uchar)max(min(sum / kernel.meanValue, 255.0f), 0.0f);
+            destination.at<uchar>(i, j) = (uchar)max(min((float)sum / kernel.meanValue, 255.0f), 0.0f);
         }
     }
 
@@ -67,12 +40,13 @@ Mat applyConvolution(Mat source, Kernel kernel) {
 Mat computeMagnitudeFloat(Mat source, Kernel kernelX, Kernel kernelY) {
     int rows = source.rows, cols = source.cols;
     Mat destination = Mat(rows, cols, CV_32FC1, Scalar(0));
+    int border = 2;
 
-    Mat filteredX = applyConvolution(source, kernelX);
-    Mat filteredY = applyConvolution(source, kernelY);
+    Mat filteredX = applyConvolution(source, kernelX, border);
+    Mat filteredY = applyConvolution(source, kernelY, border);
 
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (int i = border; i < rows - border; i++) {
+        for (int j = border; j < cols - border; j++) {
             uchar xGrad = filteredX.at<uchar>(i, j);
             uchar yGrad = filteredY.at<uchar>(i, j);
 
@@ -89,7 +63,7 @@ Mat normalizeMagnitude(Mat source) {
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            destination.at<uchar>(i, j) = source.at<float>(i, j) / (4 * sqrt(2));
+            destination.at<uchar>(i, j) = (uchar)source.at<float>(i, j) / (4.0 * sqrt(2));
         }
     }
 
@@ -100,16 +74,17 @@ Mat computeDirection(Mat source, Kernel kernelX, Kernel kernelY) {
     int rows = source.rows, cols = source.cols;
     Mat destination = Mat(rows, cols, CV_32FC1, Scalar(0));
     float pi = 3.14;
+    int border = 2;
 
-    Mat filteredX = applyConvolution(source, kernelX);
-    Mat filteredY = applyConvolution(source, kernelY);
+    Mat filteredX = applyConvolution(source, kernelX, border);
+    Mat filteredY = applyConvolution(source, kernelY, border);
 
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (int i = border; i < rows - border; i++) {
+        for (int j = border; j < cols - border; j++) {
             uchar xGrad = filteredX.at<uchar>(i, j);
             uchar yGrad = filteredY.at<uchar>(i, j);
 
-            double angle = atan((float)yGrad/xGrad) * 180 / pi;
+            float angle = (float)(atan2(yGrad, xGrad) * (180.0 / pi));
 
             if (kernelX.lengths == 2 || kernelY.lengths == 2) {
                 angle += 135;
@@ -122,23 +97,22 @@ Mat computeDirection(Mat source, Kernel kernelX, Kernel kernelY) {
     return destination;
 }
 
-Mat nonMaximaSuperposition(Mat magnitudeMatrix, Mat directionMatrix) {
+Mat computeNonMaximaSuperposition(Mat magnitudeMatrix, Mat directionMatrix) {
     int rows = magnitudeMatrix.rows, cols = magnitudeMatrix.cols;
     Mat destination = Mat(rows, cols, CV_32FC1, Scalar(0));
+    int border = 2;
 
-    for (int i = 1; i < rows - 1; i++) {
-        for (int j = 1; j < cols - 1; j++) {
+    for (int i = border; i < rows - border; i++) {
+        for (int j = border; j < cols - border; j++) {
             double direction = directionMatrix.at<uchar>(i, j);
             int region = findRegion(direction);
 
             Point p1, p2;
             findPointsBasedOnRegion(region, p1, p2);
 
-            if (magnitudeMatrix.at<uchar>(i, j) > magnitudeMatrix.at<uchar>(i + p1.x, j + p1.y)
-                    && magnitudeMatrix.at<uchar>(i, j) > magnitudeMatrix.at<uchar>(i + p2.x, j + p2.y)) {
+            if (magnitudeMatrix.at<float>(i, j) > magnitudeMatrix.at<float>(i + p1.x, j + p1.y)
+                    && magnitudeMatrix.at<float>(i, j) > magnitudeMatrix.at<float>(i + p2.x, j + p2.y)) {
                 destination.at<float>(i, j) = magnitudeMatrix.at<float>(i, j);
-            } else {
-                destination.at<float>(i, j) = 0.0f;
             }
         }
     }
@@ -146,17 +120,18 @@ Mat nonMaximaSuperposition(Mat magnitudeMatrix, Mat directionMatrix) {
     return destination;
 }
 
-int computeAdaptiveThresholdValue(Mat source, int *magnitudeHistogramScales) {
+int computeAdaptiveThresholdValue(Mat source, int *magnitudeHistogramScaled) {
     int rows = source.rows, cols = source.cols;
     float p = 0.1;
-    int numberNoEdges = (1 - p) * (rows - 2) * (cols - 2) * magnitudeHistogramScales[0];
+    int border = 2;
+    int numberNoEdges = (int)((1 - p) * (float)((rows - border) * (cols - border) - magnitudeHistogramScaled[0]));
 
     int adaptiveThreshold = 1;
     bool foundThreshold = false;
     int histSum = 0;
 
     while (adaptiveThreshold < HISTOGRAM_SIZE && !foundThreshold) {
-        histSum += magnitudeHistogramScales[adaptiveThreshold];
+        histSum += magnitudeHistogramScaled[adaptiveThreshold];
 
         if (histSum >= numberNoEdges) {
             foundThreshold = true;
@@ -168,18 +143,77 @@ int computeAdaptiveThresholdValue(Mat source, int *magnitudeHistogramScales) {
     return adaptiveThreshold;
 }
 
-Mat applyThresholding(Mat source, int thresholdValue){
+Mat edgeLabeling(Mat source, int adaptiveThreshold) {
+    float k = 0.4;
+    int thresholdHigh = adaptiveThreshold;
+    int thresholdLow = (int)(k * (float)thresholdHigh);
+
     int rows = source.rows, cols = source.cols;
-    Mat destination(rows, cols, CV_8UC1);;
+    Mat destination = Mat(rows, cols, CV_8UC1, Scalar(0));
+    int border = 1;
 
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            unsigned char pixel = source.at<unsigned char>(i,j);
+    for (int i = border; i < rows - border; i++) {
+        for (int j = border; j < cols - border; j++) {
+            uchar pixelValue = (uchar)source.at<float>(i, j);
 
-            if (pixel <= thresholdValue) {
+            if (pixelValue > thresholdHigh) {
+                destination.at<uchar>(i, j) = STRONG_VALUE;
+            } else if (pixelValue < thresholdHigh && pixelValue > thresholdLow) {
+                destination.at<uchar>(i, j) = WEAK_VALUE;
+            }
+        }
+    }
+
+    return destination;
+}
+
+Mat extendStrongEdges(Mat source) {
+    int rows = source.rows, cols = source.cols;
+    Mat destination = Mat(rows, cols, CV_8UC1, Scalar(0));
+    Mat visitedPoints = Mat(rows, cols, CV_8UC1, Scalar(0));
+    int border = 2;
+
+    int neighborI[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
+    int neighborJ[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
+    int neighborSize = 8;
+
+    queue<Point> queue;
+
+    for (int i = border; i < rows - border; i++) {
+        for (int j = border; j < cols - border; j++) {
+            if (source.at<uchar>(i, j) == STRONG_VALUE && visitedPoints.at<uchar>(i, j) != STRONG_VALUE) {
+                queue.push(Point(i, j));
+
+                visitedPoints.at<uchar>(i, j) = STRONG_VALUE;
+                destination.at<uchar>(i, j) = STRONG_VALUE;
+            }
+
+            while (!queue.empty()) {
+                Point p = queue.front();
+                queue.pop();
+
+                for (int k = 0; k < neighborSize; k++) {
+                    int newI = p.x+ neighborI[k];
+
+                    for (int l = 0; l < neighborSize; l++) {
+                        int newJ = p.y + neighborJ[l];
+
+                        if (source.at<uchar>(newI, newJ) == WEAK_VALUE && visitedPoints.at<uchar>(newI, newJ) != 255) {
+                            queue.push(Point(newI, newJ));
+
+                            visitedPoints.at<uchar>(newI, newJ) = STRONG_VALUE;
+                            destination.at<uchar>(newI, newJ) = STRONG_VALUE;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = border; i < rows - border; i++) {
+        for (int j = border; j < cols - border; j++) {
+            if (source.at<uchar>(i, j) == WEAK_VALUE) {
                 destination.at<uchar>(i, j) = 0;
-            } else {
-                destination.at<uchar>(i, j) = pixel;
             }
         }
     }
@@ -191,11 +225,10 @@ int main() {
     Mat saturn = imread("/Users/ruxiciortea/Desktop/IP/Labs/Lab 11/PI-L11/saturn.bmp",
                                IMREAD_GRAYSCALE);
 
-    int gaussianKernelSize = 3;
     int kernelSize3 = 3;
     int kernelSize2 = 2;
-    Kernel gaussianKernel = computeGaussianKernel(gaussianKernelSize);
 
+    Kernel gaussianKernel = initKernel({1, 2, 1, 2, 4, 2, 1, 2, 1}, kernelSize3);
 //    Kernel prewittX = initKernel({-1, 0, 1, -1, 0, 1, -1, 0, 1}, kernelSize3);
 //    Kernel prewittY = initKernel({1, 1, 1, 0, 0, 0, -1, -1, -1}, kernelSize3);
     Kernel sobelX = initKernel({-1, 0, 1, -2, 0, 2, -1, 0, 1}, kernelSize3);
@@ -203,19 +236,16 @@ int main() {
 //    Kernel crossX = initKernel({1, 0, 0, -1}, kernelSize2);
 //    Kernel crossY = initKernel({0, -1, 1, 0}, kernelSize2);
 
-    printMatrix(3, 3, sobelX.values);
-    printMatrix(3, 3, sobelY.values);
-
     imshow("Original Image", saturn);
-    Mat gaussianFiltered2D = applyConvolution(saturn, gaussianKernel);
-//    imshow("Gaussian Filtered Image", gaussianFiltered2D);
+    Mat gaussianFiltered2D = applyConvolution(saturn, gaussianKernel, 1);
+    imshow("Gaussian Filtered Image", gaussianFiltered2D);
 
 //    Mat prewittXFiltered = applyConvolution(gaussianFiltered2D, prewittX);
 //    Mat prewittYFiltered = applyConvolution(prewittXFiltered, prewittY);
 //    imshow("Prewitt Filtered Image", prewittYFiltered);
 
-    Mat sobelXFiltered = applyConvolution(gaussianFiltered2D, sobelX);
-    Mat sobelYFiltered = applyConvolution(gaussianFiltered2D, sobelY);
+    Mat sobelXFiltered = applyConvolution(gaussianFiltered2D, sobelX, 2);
+    Mat sobelYFiltered = applyConvolution(gaussianFiltered2D, sobelY, 2);
 //    imshow("X", sobelXFiltered);
 //    imshow("Y", sobelYFiltered);
 
@@ -228,19 +258,21 @@ int main() {
     imshow("Magnitude values", normalizedMagnitudeMatrix);
 
     Mat directionMatrix = computeDirection(gaussianFiltered2D, sobelX, sobelY);
-//    imshow("Direction values", directionMatrix);
 
-    Mat nonMaximaSuperpositioned = nonMaximaSuperposition(floatMagnitudeMatrix, directionMatrix);
-    Mat normalizedNonMaximaSuperpositioned;
-    normalize(nonMaximaSuperpositioned, normalizedNonMaximaSuperpositioned, 0, 1, NORM_MINMAX);
-    imshow("test", normalizedNonMaximaSuperpositioned);
+    Mat nonMaximaSuperposition = computeNonMaximaSuperposition(floatMagnitudeMatrix, directionMatrix);
+    Mat normalizedNonMaximaSuperposition;
+    normalize(nonMaximaSuperposition, normalizedNonMaximaSuperposition, 0, 1, NORM_MINMAX);
+    imshow("Normalized Non Maxima Superposition", normalizedNonMaximaSuperposition);
 
     int *magnitudeHistogramScales = computeHistogram(normalizedMagnitudeMatrix);
 //    showHistogram("Histogram", magnitudeHistogramScales, HISTOGRAM_SIZE, 100);
-    int adaptiveThreshold = computeAdaptiveThresholdValue(nonMaximaSuperpositioned, magnitudeHistogramScales);
+    int adaptiveThreshold = computeAdaptiveThresholdValue(nonMaximaSuperposition, magnitudeHistogramScales);
 
-    Mat thresholding = applyThresholding(nonMaximaSuperpositioned, adaptiveThreshold);
-    imshow("x", thresholding);
+    Mat thresholding = edgeLabeling(nonMaximaSuperposition, adaptiveThreshold);
+    imshow("After Thresholding", thresholding);
+
+    Mat edges = extendStrongEdges(thresholding);
+    imshow("Just edges", edges);
 
     waitKey();
 

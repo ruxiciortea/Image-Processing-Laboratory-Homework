@@ -19,3 +19,4 @@ void printMatrix(int rows, int cols, float **matrix);
 int findRegion(double angle);
 void findPointsBasedOnRegion(int region, Point &p1, Point &p2);
 Kernel initKernel(vector<int> values, int size);
+Mat applyThresholding(Mat source, int thresholdValue);

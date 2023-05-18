@@ -27,19 +27,19 @@ void printMatrix(int rows, int cols, float **matrix) {
 }
 
 int findRegion(double angle) {
-    if ((angle >= 67.5 && angle < 112.5) || (angle >= 247.5 && angle < 292.5)) {
+    if ((angle >= 67 && angle < 112) || (angle >= 247 && angle < 292)) {
         return 0;
     }
 
-    if ((angle >= 22.5 && angle < 67.5) || (angle >= 202.5 && angle < 247.5)) {
+    if ((angle >= 22 && angle < 67) || (angle >= 202 && angle < 247)) {
         return 1;
     }
 
-    if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle < 202.5) || (angle >= 337.5 && angle <= 360)) {
+    if ((angle >= 0 && angle < 22) || (angle >= 157 && angle < 202) || (angle >= 337 && angle <= 360)) {
         return 2;
     }
 
-    if ((angle >= 112.5 && angle < 157.5) || (angle >= 292.5 && angle < 337.5)) {
+    if ((angle >= 112 && angle < 157) || (angle >= 292 && angle < 337)) {
         return 3;
     }
 
@@ -87,4 +87,21 @@ Kernel initKernel(vector<int> values, int size) {
     float meanValue = sum == 0 ? 1 : sum;
 
     return {matrix, size, meanValue};
+}
+
+Mat applyThresholding(Mat source, int thresholdValue) {
+    int rows = source.rows, cols = source.cols;
+    Mat destination(rows, cols, CV_8UC1, Scalar(0));
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            float pixel = source.at<float>(i,j);
+
+            if (pixel > thresholdValue) {
+                destination.at<uchar>(i, j) = (uchar) source.at<float>(i, j);
+            }
+        }
+    }
+
+    return destination;
 }
