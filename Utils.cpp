@@ -27,6 +27,10 @@ void printMatrix(int rows, int cols, float **matrix) {
 }
 
 int findRegion(double angle) {
+    if (angle < 0) {
+        angle += 360;
+    }
+
     if ((angle >= 67 && angle < 112) || (angle >= 247 && angle < 292)) {
         return 0;
     }

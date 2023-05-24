@@ -23,14 +23,14 @@ Mat applyConvolution(Mat source, Kernel kernel, int border) {
                 for (int l = 0; l < kernel.lengths; l++) {
                     int newJ = j + l - border - 1;
 
-                    float kernelValue = kernel.values[k][l];
-                    float sourceValue = (float)source.at<uchar>(newI, newJ);
+                    float kernelValue = kernel.values[k][l] / kernel.meanValue;
+                    uchar sourceValue = source.at<uchar>(newI, newJ);
 
                     sum += kernelValue * sourceValue;
                 }
             }
 
-            destination.at<uchar>(i, j) = (uchar)max(min((float)sum / kernel.meanValue, 255.0f), 0.0f);
+            destination.at<uchar>(i, j) = (uchar)max(min(sum, 255.0f), 0.0f);
         }
     }
 
@@ -63,7 +63,13 @@ Mat normalizeMagnitude(Mat source) {
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            destination.at<uchar>(i, j) = (uchar)source.at<float>(i, j) / (4.0 * sqrt(2));
+            uchar magnitude = (uchar)source.at<float>(i, j) / (4.0 * sqrt(2));
+
+//            if (magnitude * 2 > 255) {
+//                destination.at<uchar>(i, j) = 255;
+//            } else {
+                destination.at<uchar>(i, j) = magnitude;
+//            }
         }
     }
 
@@ -73,7 +79,6 @@ Mat normalizeMagnitude(Mat source) {
 Mat computeDirection(Mat source, Kernel kernelX, Kernel kernelY) {
     int rows = source.rows, cols = source.cols;
     Mat destination = Mat(rows, cols, CV_32FC1, Scalar(0));
-    float pi = 3.14;
     int border = 2;
 
     Mat filteredX = applyConvolution(source, kernelX, border);
@@ -84,7 +89,8 @@ Mat computeDirection(Mat source, Kernel kernelX, Kernel kernelY) {
             uchar xGrad = filteredX.at<uchar>(i, j);
             uchar yGrad = filteredY.at<uchar>(i, j);
 
-            float angle = (float)(atan2(yGrad, xGrad) * (180.0 / pi));
+            float atan = atan2(yGrad, xGrad);
+            float angle = atan * (180.0 / CV_PI);
 
             destination.at<float>(i, j) = angle;
         }
@@ -95,7 +101,7 @@ Mat computeDirection(Mat source, Kernel kernelX, Kernel kernelY) {
 
 Mat computeNonMaximaSuppression(Mat magnitudeMatrix, Mat directionMatrix) {
     int rows = magnitudeMatrix.rows, cols = magnitudeMatrix.cols;
-    Mat destination = Mat(rows, cols, CV_32FC1, Scalar(0));
+    Mat destination = Mat(rows, cols, CV_8UC1, Scalar(0));
     int border = 2;
 
     for (int i = border; i < rows - border; i++) {
@@ -106,12 +112,12 @@ Mat computeNonMaximaSuppression(Mat magnitudeMatrix, Mat directionMatrix) {
             Point p1, p2;
             findPointsBasedOnRegion(region, p1, p2);
 
-            float m = magnitudeMatrix.at<float>(i, j);
-            float m1 = magnitudeMatrix.at<float>(i + p1.x, j + p1.y);
-            float m2 = magnitudeMatrix.at<float>(i + p2.x, j + p2.y);
+            float m = magnitudeMatrix.at<uchar>(i, j);
+            float m1 = magnitudeMatrix.at<uchar>(i + p1.y, j + p1.x);
+            float m2 = magnitudeMatrix.at<uchar>(i + p2.y, j + p2.x);
 
-            if (m > m1 && m > m2 && m > 0 && m1 > 0 && m2 > 0) {
-                destination.at<float>(i, j) = magnitudeMatrix.at<float>(i, j);
+            if (m > m1 && m > m2) {
+                destination.at<uchar>(i, j) = magnitudeMatrix.at<uchar>(i, j);
             }
         }
     }
@@ -153,7 +159,7 @@ Mat edgeLabeling(Mat source, int adaptiveThreshold) {
 
     for (int i = border; i < rows - border; i++) {
         for (int j = border; j < cols - border; j++) {
-            uchar pixelValue = (uchar)source.at<float>(i, j);
+            uchar pixelValue = source.at<uchar>(i, j);
 
             if (pixelValue > thresholdHigh) {
                 destination.at<uchar>(i, j) = STRONG_VALUE;
@@ -234,19 +240,14 @@ int main() {
     Mat gaussianFiltered2D = applyConvolution(saturn, gaussianKernel, 1);
     imshow("Gaussian Filtered Image", gaussianFiltered2D);
 
-    Mat sobelXFiltered = applyConvolution(gaussianFiltered2D, sobelX, 2);
-    Mat sobelYFiltered = applyConvolution(gaussianFiltered2D, sobelY, 2);
-
     Mat floatMagnitudeMatrix = computeMagnitudeFloat(gaussianFiltered2D, sobelX, sobelY);
     Mat normalizedMagnitudeMatrix = normalizeMagnitude(floatMagnitudeMatrix);
     imshow("Magnitude values", normalizedMagnitudeMatrix);
 
     Mat directionMatrix = computeDirection(gaussianFiltered2D, sobelX, sobelY);
 
-    Mat nonMaximaSuppression = computeNonMaximaSuppression(floatMagnitudeMatrix, directionMatrix);
-    Mat normalizedNonMaximaSuppression;
-    normalize(nonMaximaSuppression, normalizedNonMaximaSuppression, 0, 1, NORM_MINMAX);
-    imshow("Normalized Non Maxima Superposition", normalizedNonMaximaSuppression);
+    Mat nonMaximaSuppression = computeNonMaximaSuppression(normalizedMagnitudeMatrix, directionMatrix);
+    imshow("Normalized Non Maxima Suppression", nonMaximaSuppression);
 
     int *magnitudeHistogramScales = computeHistogram(normalizedMagnitudeMatrix);
 //    showHistogram("Histogram", magnitudeHistogramScales, HISTOGRAM_SIZE, 100);
