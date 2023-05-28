@@ -22,33 +22,29 @@ Mat dilation(Mat source, neighborhood_structure neighborhood, int no_iter){
     // the neighborhood argument
 
     int rows = source.rows, cols = source.cols;
-    Mat dst(rows, cols, CV_8UC1, Scalar(0)), aux = source;
+    Mat dst(rows, cols, CV_8UC1, Scalar(255)), aux = source;
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     for (int m = 0; m < no_iter; m++) {
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                if (aux.at<uchar>(i, j) == 255) {
-                    dst.at<uchar>(i, j) = 255;
-                } else {
+                if (aux.at<uchar>(i, j) == 0) {
                     dst.at<uchar>(i, j) = 0;
 
                     for (int k = 0; k < neighborhood.size; k++) {
-                        for (int l = 0; l < neighborhood.size; l++) {
-                            int new_i = i + neighborhood.di[k];
-                            int new_j = j + neighborhood.dj[l];
+                        int new_i = i + neighborhood.di[k];
+                        int new_j = j + neighborhood.dj[k];
 
-                            if (IsInside(aux, new_i, new_j)) {
-                                dst.at<uchar>(new_i, new_j) = 0;
-                            }
+                        if (IsInside(aux, new_i, new_j)) {
+                            dst.at<uchar>(new_i, new_j) = 0;
                         }
                     }
                 }
             }
         }
 
-        aux = dst;
+        aux = dst.clone();
     }
 
     //*****END OF YOUR CODE(DO NOT DELETE / MODIFY THIS LINE) *****
@@ -63,7 +59,7 @@ Mat erosion(Mat source, neighborhood_structure neighborhood, int no_iter){
     // the neighborhood argument
 
     int rows = source.rows, cols = source.cols;
-    Mat dst(rows, cols, CV_8UC1, Scalar(0)), aux = source;
+    Mat dst(rows, cols, CV_8UC1, Scalar(255)), aux = source;
 
     //*****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -73,18 +69,16 @@ Mat erosion(Mat source, neighborhood_structure neighborhood, int no_iter){
                 bool background = false;
 
                 for (int k = 0; k < neighborhood.size; k++) {
-                    for (int l = 0; l < neighborhood.size; l++) {
-                        int new_i = i + neighborhood.di[k];
-                        int new_j = j + neighborhood.dj[l];
+                    int new_i = i + neighborhood.di[k];
+                    int new_j = j + neighborhood.dj[k];
 
-                        if (IsInside(aux, new_i, new_j)) {
-                            if (aux.at<uchar>(new_i, new_j) == 255) {
-                                background = true;
+                    if (IsInside(aux, new_i, new_j)) {
+                        if (aux.at<uchar>(new_i, new_j) == 255) {
+                            background = true;
 
-                                break;
-                            } else {
-                                background = false;
-                            }
+                            break;
+                        } else {
+                            background = false;
                         }
                     }
                 }
@@ -190,22 +184,22 @@ int main() {
     imshow("Original Image", source);
 
     neighborhood_structure n8 = {
-            8,
-            (int[]){0,-1,-1,-1,0,1,1,1},
-            (int[]){1,1,0,-1,-1,-1,0,1}
+            9,
+            (int[]){0,-1,-1,-1,0,1,1,1, 0},
+            (int[]){1,1,0,-1,-1,-1,0,1, 0}
     };
 
     neighborhood_structure n4 = {
-            4,
-            (int[]){ 0,-1, 0, 1},
-            (int[]){ 1, 0,-1, 0}
+            5,
+            (int[]){ 0,-1, 0, 1, 0},
+            (int[]){ 1, 0,-1, 0, 0}
     };
 
     Mat dilation_4n = dilation(source, n4, 1);
-    imshow("Dilation 4n", dilation_4n);
+//    imshow("Dilation 4n", dilation_4n);
 
     Mat dilation_8n = dilation(source, n8, 1);
-    imshow("Dilation 8n", dilation_8n);
+//    imshow("Dilation 8n", dilation_8n);
 
     Mat erosion_4n = erosion(source, n4, 1);
     imshow("Erosion 4n", erosion_4n);
@@ -214,21 +208,21 @@ int main() {
     imshow("Erosion 8n", erosion_8n);
 
     Mat opening_4n = opening(source, n4, 2);
-    imshow("Opening 4n", opening_4n);
+//    imshow("Opening 4n", opening_4n);
 
     Mat opening_8n = opening(source, n8, 2);
-    imshow("Opening 8n", opening_8n);
+//    imshow("Opening 8n", opening_8n);
 
     Mat closing_4n = closing(source, n4, 2);
-    imshow("Closing 4n", closing_4n);
+//    imshow("Closing 4n", closing_4n);
 
     Mat closing_8n = closing(source, n8, 2);
-    imshow("Closing 8n", closing_8n);
+//    imshow("Closing 8n", closing_8n);
 
 
 
     Mat boundary_extraction_mat = boundary_extraction(source_boundary, n8);
-    imshow("Boundary extraction", boundary_extraction_mat);
+//    imshow("Boundary extraction", boundary_extraction_mat);
 
 //    Mat region_filling_mat = region_filling(source_boundary, n8);
 //    imshow("Region filling", region_filling_mat);
